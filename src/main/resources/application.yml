@@ -1,0 +1,24 @@
+app:
+  databricks:
+    hostname: ${DATABRICKS_HOST}
+    http-path: ${DATABRICKS_HTTP_PATH}
+    token: ${DATABRICKS_TOKEN}
+    schema: demo
+
+spring:
+  datasource:
+    driver-class-name: com.databricks.client.jdbc.Driver
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+server:
+  port: 8080
+
+logging:
+  level:
+    com.example.databricksaccess: DEBUG
+    com.zaxxer.hikari: INFO
