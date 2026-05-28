@@ -8,7 +8,8 @@ A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market
 - JdbcTemplate + HikariCP (no JPA)
 - Lombok (`@Slf4j`, `@Data`, `@RequiredArgsConstructor`)
 - Logback with `logback-spring.xml` (console + rolling file to `logs/`)
-- Databricks JDBC driver (`com.databricks:databricks-jdbc:2.6.40`)
+- Databricks JDBC driver (`com.databricks:databricks-jdbc:3.4.1`)
+- Spring Boot Actuator (health endpoint)
 
 ## Project Structure
 ```
@@ -17,14 +18,16 @@ src/main/java/com/example/databricksaccess/
   model/         -> MarketIndex (Java record)
   repository/    -> MarketIndexRepository (JdbcTemplate)
   service/       -> MarketIndexService
-  controller/    -> MarketIndexController, HealthController
+  controller/    -> MarketIndexController
   exception/     -> MarketIndexNotFoundException, GlobalExceptionHandler
+  health/        -> DatabricksHealthIndicator (Actuator)
 ```
 
 ## API Endpoints
 - `GET /api/indices` — list all (optional `?country=` filter)
 - `GET /api/indices/{symbol}` — get by symbol (e.g. SPX, NSEI)
-- `GET /health/databricks` — connectivity check
+- `GET /actuator/health` — overall health (HTTP 503 when any component is DOWN)
+- `GET /actuator/health/databricks` — Databricks-only component with `responseTimeMs` detail
 
 ## Configuration
 Environment variables required:
