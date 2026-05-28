@@ -3,7 +3,7 @@ app:
     hostname: ${DATABRICKS_HOST}
     http-path: ${DATABRICKS_HTTP_PATH}
     token: ${DATABRICKS_TOKEN}
-    schema: demo
+    schema: workspace.demo
 
 spring:
   datasource:
