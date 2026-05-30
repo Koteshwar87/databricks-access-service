@@ -7,9 +7,9 @@ public record MarketIndex(
         String symbol,
         String indexName,
         String country,
-        double currentValue,
-        double changePct,
-        double marketCapTrillions,
+        Double currentValue,
+        Double changePct,
+        Double marketCapTrillions,
         LocalDate tradeDate
 ) {
 }

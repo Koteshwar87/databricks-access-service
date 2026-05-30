@@ -36,6 +36,8 @@ public class DataSourceConfig {
 
     @Bean
     public JdbcTemplate jdbcTemplate(DataSource dataSource) {
-        return new JdbcTemplate(dataSource);
+        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate.setQueryTimeout(databricksProperties.getQueryTimeoutSeconds());
+        return jdbcTemplate;
     }
 }

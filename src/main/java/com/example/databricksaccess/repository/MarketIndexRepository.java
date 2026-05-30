@@ -1,6 +1,5 @@
 package com.example.databricksaccess.repository;
 
-import com.example.databricksaccess.config.DatabricksProperties;
 import com.example.databricksaccess.model.MarketIndex;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
@@ -8,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -15,37 +15,37 @@ import java.util.Optional;
 public class MarketIndexRepository {
 
     private static final String INSTANCE = "databricks";
+    private static final String COLUMNS = "id, symbol, index_name, country, current_value, change_pct, market_cap_trillions, trade_date";
+    private static final int FIND_ALL_HARD_LIMIT = 10000;
 
     private final JdbcTemplate jdbcTemplate;
-    private final String schema;
 
     private final RowMapper<MarketIndex> rowMapper = (rs, rowNum) -> new MarketIndex(
-            rs.getInt("id"),
+            rs.getObject("id", Integer.class),
             rs.getString("symbol"),
             rs.getString("index_name"),
             rs.getString("country"),
-            rs.getDouble("current_value"),
-            rs.getDouble("change_pct"),
-            rs.getDouble("market_cap_trillions"),
-            rs.getDate("trade_date").toLocalDate()
+            rs.getObject("current_value", Double.class),
+            rs.getObject("change_pct", Double.class),
+            rs.getObject("market_cap_trillions", Double.class),
+            rs.getObject("trade_date", LocalDate.class)
     );
 
-    public MarketIndexRepository(JdbcTemplate jdbcTemplate, DatabricksProperties databricksProperties) {
+    public MarketIndexRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
-        this.schema = databricksProperties.getSchema();
     }
 
     @CircuitBreaker(name = INSTANCE)
     @Retry(name = INSTANCE)
     public List<MarketIndex> findAll() {
-        String sql = "SELECT id, symbol, index_name, country, current_value, change_pct, market_cap_trillions, trade_date FROM " + schema + ".market_indices";
+        String sql = "SELECT " + COLUMNS + " FROM market_indices LIMIT " + FIND_ALL_HARD_LIMIT;
         return jdbcTemplate.query(sql, rowMapper);
     }
 
     @CircuitBreaker(name = INSTANCE)
     @Retry(name = INSTANCE)
     public Optional<MarketIndex> findBySymbol(String symbol) {
-        String sql = "SELECT id, symbol, index_name, country, current_value, change_pct, market_cap_trillions, trade_date FROM " + schema + ".market_indices WHERE symbol = ?";
+        String sql = "SELECT " + COLUMNS + " FROM market_indices WHERE symbol = ?";
         List<MarketIndex> results = jdbcTemplate.query(sql, rowMapper, symbol);
         return results.stream().findFirst();
     }
@@ -53,7 +53,7 @@ public class MarketIndexRepository {
     @CircuitBreaker(name = INSTANCE)
     @Retry(name = INSTANCE)
     public List<MarketIndex> findByCountry(String country) {
-        String sql = "SELECT id, symbol, index_name, country, current_value, change_pct, market_cap_trillions, trade_date FROM " + schema + ".market_indices WHERE country = ?";
+        String sql = "SELECT " + COLUMNS + " FROM market_indices WHERE country = ?";
         return jdbcTemplate.query(sql, rowMapper, country);
     }
 }

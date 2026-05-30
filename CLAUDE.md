@@ -8,7 +8,7 @@ A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market
 - JdbcTemplate + HikariCP (no JPA)
 - Lombok (`@Slf4j`, `@Data`, `@RequiredArgsConstructor`)
 - Logging via SLF4J (`@Slf4j`) — no logging config in this module; host app owns logback/CloudWatch when embedded, Spring Boot defaults apply for standalone local runs
-- Databricks JDBC driver (`com.databricks:databricks-jdbc:3.4.1`)
+- Databricks JDBC driver (`com.databricks:databricks-jdbc:3.4.1`) with recommended URL flags: `EnableArrow=1`, `UseNativeQuery=1`, `UserAgentEntry=databricks-access-service`, `ConnCatalog`, `ConnSchema`
 - Spring Boot Actuator (health endpoint)
 - Resilience4j (retry + circuit breaker around repository calls)
 
@@ -37,6 +37,11 @@ Required environment variables:
 - `DATABRICKS_HOST` — server hostname
 - `DATABRICKS_HTTP_PATH` — SQL warehouse HTTP path
 
+Optional environment variables (defaults shown):
+- `DATABRICKS_CATALOG` — Unity Catalog catalog name (default: `workspace`)
+- `DATABRICKS_SCHEMA` — schema/database name within the catalog (default: `demo`)
+- `DATABRICKS_QUERY_TIMEOUT_SECONDS` — per-query upper bound (default: `60`)
+
 Authentication (choose exactly one mode; startup fails if both or neither are set):
 - **PAT mode**: `DATABRICKS_TOKEN` — personal access token
 - **OAuth M2M mode**: `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET` — service principal credentials (preferred for production; non-human identity, rotatable, longer-lived)
@@ -51,7 +56,8 @@ mvn spring-boot:run        # run (requires env vars set)
 - Read-only API (no writes — Databricks is analytical)
 - `@ConfigurationProperties` for config binding (not @Value)
 - JDBC URL constructed in `DatabricksProperties.getJdbcUrl()`
-- Schema name configurable via `app.databricks.schema` (default: demo)
+- Catalog + schema separated via `app.databricks.catalog` / `app.databricks.schema` (passed to JDBC as `ConnCatalog` / `ConnSchema`); SQL in the repository is unqualified
+- Per-query timeout via `app.databricks.query-timeout-seconds` applied to `JdbcTemplate`
 - Global exception handler returns clean JSON errors
 - HikariCP pool max size = 5 (Databricks connections are expensive)
 - Use Lombok `@Slf4j` for logging (not manual LoggerFactory)
