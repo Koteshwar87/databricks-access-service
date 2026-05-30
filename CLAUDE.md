@@ -25,8 +25,8 @@ src/main/java/com/example/databricksaccess/
 ```
 
 ## API Endpoints
-- `GET /api/indices` — list all (optional `?country=` filter)
-- `GET /api/indices/{symbol}` — get by symbol (e.g. SPX, NSEI)
+- `GET /api/indices` — paginated list (Spring `Page` envelope); supports `?page=`, `?size=` (default 20), `?sort=field,dir`, optional `?country=` filter
+- `GET /api/indices/{symbol}` — single result, no pagination
 - `GET /actuator/health` — overall health (HTTP 503 when any component is DOWN)
 - `GET /actuator/health/databricks` — Databricks-only component with `responseTimeMs` detail
 - `GET /actuator/circuitbreakers` — state of all circuit breakers
@@ -64,3 +64,5 @@ mvn spring-boot:run        # run (requires env vars set)
 - Use Lombok `@RequiredArgsConstructor` for constructor injection (no manual constructors)
 - Use Lombok `@Data` for config POJOs
 - Resilience4j wraps `MarketIndexRepository` methods with `@Retry(name = "databricks")` + `@CircuitBreaker(name = "databricks")` — config under `resilience4j.*` in application.yml
+- Pagination via Spring `Pageable` / `Page<T>` on list endpoints; default page size 20 (Spring Boot default)
+- Sort fields whitelisted in `MarketIndexRepository.SORTABLE_COLUMNS`; unknown sort field → HTTP 400
