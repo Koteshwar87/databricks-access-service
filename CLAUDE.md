@@ -33,10 +33,13 @@ src/main/java/com/example/databricksaccess/
 - `GET /actuator/circuitbreakerevents` — recent circuit-breaker transitions
 
 ## Configuration
-Environment variables required:
+Required environment variables:
 - `DATABRICKS_HOST` — server hostname
 - `DATABRICKS_HTTP_PATH` — SQL warehouse HTTP path
-- `DATABRICKS_TOKEN` — personal access token
+
+Authentication (choose exactly one mode; startup fails if both or neither are set):
+- **PAT mode**: `DATABRICKS_TOKEN` — personal access token
+- **OAuth M2M mode**: `DATABRICKS_CLIENT_ID` + `DATABRICKS_CLIENT_SECRET` — service principal credentials (preferred for production; non-human identity, rotatable, longer-lived)
 
 ## Build & Run
 ```bash

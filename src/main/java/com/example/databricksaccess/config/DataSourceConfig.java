@@ -22,7 +22,10 @@ public class DataSourceConfig {
     @ConfigurationProperties("spring.datasource.hikari")
     public HikariDataSource dataSource(DataSourceProperties props) {
         String jdbcUrl = databricksProperties.getJdbcUrl();
-        String maskedUrl = jdbcUrl.replaceAll("PWD=.*?;", "PWD=***;");
+        String maskedUrl = jdbcUrl
+                .replaceAll("PWD=[^;]*;", "PWD=***;")
+                .replaceAll("OAuth2Secret=[^;]*;", "OAuth2Secret=***;");
+        log.info("Databricks auth mode: {}", databricksProperties.isOAuthMode() ? "OAuth M2M" : "PAT");
         log.info("Configuring Databricks DataSource: {}", maskedUrl);
 
         return props.initializeDataSourceBuilder()
