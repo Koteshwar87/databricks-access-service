@@ -2,7 +2,9 @@ app:
   databricks:
     hostname: ${DATABRICKS_HOST}
     http-path: ${DATABRICKS_HTTP_PATH}
-    token: ${DATABRICKS_TOKEN}
+    token: ${DATABRICKS_TOKEN:}
+    client-id: ${DATABRICKS_CLIENT_ID:}
+    client-secret: ${DATABRICKS_CLIENT_SECRET:}
     schema: workspace.demo
 
 spring:
