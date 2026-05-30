@@ -3,6 +3,8 @@ package com.example.databricksaccess.config;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.jdbc.DataSourceProperties;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -17,15 +19,16 @@ public class DataSourceConfig {
     private final DatabricksProperties databricksProperties;
 
     @Bean
-    public DataSource dataSource() {
+    @ConfigurationProperties("spring.datasource.hikari")
+    public HikariDataSource dataSource(DataSourceProperties props) {
         String jdbcUrl = databricksProperties.getJdbcUrl();
         String maskedUrl = jdbcUrl.replaceAll("PWD=.*?;", "PWD=***;");
         log.info("Configuring Databricks DataSource: {}", maskedUrl);
 
-        HikariDataSource dataSource = new HikariDataSource();
-        dataSource.setJdbcUrl(jdbcUrl);
-        dataSource.setDriverClassName("com.databricks.client.jdbc.Driver");
-        return dataSource;
+        return props.initializeDataSourceBuilder()
+                .type(HikariDataSource.class)
+                .url(jdbcUrl)
+                .build();
     }
 
     @Bean
