@@ -10,6 +10,7 @@ A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market
 - Logging via SLF4J (`@Slf4j`) — no logging config in this module; host app owns logback/CloudWatch when embedded, Spring Boot defaults apply for standalone local runs
 - Databricks JDBC driver (`com.databricks:databricks-jdbc:3.4.1`)
 - Spring Boot Actuator (health endpoint)
+- Resilience4j (retry + circuit breaker around repository calls)
 
 ## Project Structure
 ```
@@ -28,6 +29,8 @@ src/main/java/com/example/databricksaccess/
 - `GET /api/indices/{symbol}` — get by symbol (e.g. SPX, NSEI)
 - `GET /actuator/health` — overall health (HTTP 503 when any component is DOWN)
 - `GET /actuator/health/databricks` — Databricks-only component with `responseTimeMs` detail
+- `GET /actuator/circuitbreakers` — state of all circuit breakers
+- `GET /actuator/circuitbreakerevents` — recent circuit-breaker transitions
 
 ## Configuration
 Environment variables required:
@@ -51,3 +54,4 @@ mvn spring-boot:run        # run (requires env vars set)
 - Use Lombok `@Slf4j` for logging (not manual LoggerFactory)
 - Use Lombok `@RequiredArgsConstructor` for constructor injection (no manual constructors)
 - Use Lombok `@Data` for config POJOs
+- Resilience4j wraps `MarketIndexRepository` methods with `@Retry(name = "databricks")` + `@CircuitBreaker(name = "databricks")` — config under `resilience4j.*` in application.yml
