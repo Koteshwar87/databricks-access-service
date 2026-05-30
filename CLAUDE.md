@@ -7,7 +7,7 @@ A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market
 - Java 17, Spring Boot 3.5.0, Maven
 - JdbcTemplate + HikariCP (no JPA)
 - Lombok (`@Slf4j`, `@Data`, `@RequiredArgsConstructor`)
-- Logback with `logback-spring.xml` (console + rolling file to `logs/`)
+- Logging via SLF4J (`@Slf4j`) — no logging config in this module; host app owns logback/CloudWatch when embedded, Spring Boot defaults apply for standalone local runs
 - Databricks JDBC driver (`com.databricks:databricks-jdbc:3.4.1`)
 - Spring Boot Actuator (health endpoint)
 
@@ -51,4 +51,3 @@ mvn spring-boot:run        # run (requires env vars set)
 - Use Lombok `@Slf4j` for logging (not manual LoggerFactory)
 - Use Lombok `@RequiredArgsConstructor` for constructor injection (no manual constructors)
 - Use Lombok `@Data` for config POJOs
-- Logback config: console + rolling file appender (`logs/` dir, 10MB max per file, 30 days retention)
