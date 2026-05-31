@@ -1,5 +1,7 @@
 # databricks-access-service
 
+> **Repo layout**: this is a Maven multi-module project. The active app lives in `databricks-only/`. Future reference variants (`databricks-pg-coexist/`, `databricks-pg-fallback/`) will be added as sibling modules — each demonstrates a different pattern for combining Databricks with another data source. Commands shown below target the `databricks-only` module specifically.
+
 ## What is this?
 A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market indices domain as a sample.
 
@@ -14,7 +16,7 @@ A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market
 
 ## Project Structure
 ```
-src/main/java/com/example/databricksaccess/
+databricks-only/src/main/java/com/example/databricksaccess/
   config/        -> DatabricksProperties, DataSourceConfig
   model/         -> MarketIndex (Java record)
   repository/    -> MarketIndexRepository (JdbcTemplate)
@@ -48,8 +50,8 @@ Authentication (choose exactly one mode; startup fails if both or neither are se
 
 ## Build & Run
 ```bash
-mvn compile                # compile
-mvn spring-boot:run        # run (requires env vars set)
+mvn -pl databricks-only compile          # compile the databricks-only module
+mvn -pl databricks-only spring-boot:run  # run the databricks-only module (requires env vars set)
 ```
 
 ## Key Conventions
