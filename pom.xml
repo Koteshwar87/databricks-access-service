@@ -20,6 +20,7 @@
 
     <modules>
         <module>databricks-only</module>
+        <module>databricks-pg-coexist</module>
     </modules>
 
     <properties>

@@ -1,6 +1,11 @@
 # databricks-access-service
 
-> **Repo layout**: this is a Maven multi-module project. The active app lives in `databricks-only/`. Future reference variants (`databricks-pg-coexist/`, `databricks-pg-fallback/`) will be added as sibling modules — each demonstrates a different pattern for combining Databricks with another data source. Commands shown below target the `databricks-only` module specifically.
+> **Repo layout**: this is a Maven multi-module project. Reference modules:
+> - `databricks-only/` — single Databricks DataSource (current standalone app, market indices domain)
+> - `databricks-pg-coexist/` — both Databricks + Postgres DataSources in one app, config-driven per-dataset routing (portfolio holdings domain; see its own README for setup)
+> - `databricks-pg-fallback/` *(future)* — Databricks primary with PG fallback on failure
+>
+> Commands shown below target the `databricks-only` module specifically; each new module has its own README and run instructions.
 
 ## What is this?
 A Spring Boot REST API that connects to Databricks via JDBC. Uses a stock market indices domain as a sample.
