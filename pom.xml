@@ -21,6 +21,7 @@
     <modules>
         <module>databricks-only</module>
         <module>databricks-pg-coexist</module>
+        <module>databricks-pg-fallback</module>
     </modules>
 
     <properties>
