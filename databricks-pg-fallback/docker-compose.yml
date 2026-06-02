@@ -1,0 +1,17 @@
+services:
+  pg:
+    image: postgres:16-alpine
+    container_name: tradehistory-pg
+    environment:
+      POSTGRES_DB: tradehistory
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tradehistory"]
+      interval: 5s
+      timeout: 3s
+      retries: 5

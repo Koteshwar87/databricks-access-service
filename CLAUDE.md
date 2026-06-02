@@ -3,7 +3,7 @@
 > **Repo layout**: this is a Maven multi-module project. Reference modules:
 > - `databricks-only/` — single Databricks DataSource (current standalone app, market indices domain)
 > - `databricks-pg-coexist/` — both Databricks + Postgres DataSources in one app, config-driven per-dataset routing (portfolio holdings domain; see its own README for setup)
-> - `databricks-pg-fallback/` *(future)* — Databricks primary with PG fallback on failure
+> - `databricks-pg-fallback/` — Databricks primary with PG fallback on failure via Resilience4j `@CircuitBreaker(fallbackMethod=...)` (trade history domain; see its own README for setup)
 >
 > Commands shown below target the `databricks-only` module specifically; each new module has its own README and run instructions.
 

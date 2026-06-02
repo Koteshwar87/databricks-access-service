@@ -1,0 +1,18 @@
+-- Same row IDs and content as the Databricks seed in README.md so the fallback
+-- is invisible to the API consumer (PG response matches Databricks response).
+INSERT INTO trades (id, account, symbol, side, quantity, price, exec_time) VALUES
+    (1,  'ACC001', 'AAPL', 'BUY',  100.0000, 142.1000, TIMESTAMP '2026-01-15 09:31:22'),
+    (2,  'ACC001', 'AAPL', 'BUY',   50.0000, 148.4000, TIMESTAMP '2026-02-10 10:05:48'),
+    (3,  'ACC001', 'MSFT', 'BUY',   25.0000, 275.2000, TIMESTAMP '2026-01-22 11:18:09'),
+    (4,  'ACC001', 'MSFT', 'SELL',  10.0000, 285.6000, TIMESTAMP '2026-03-04 14:42:31'),
+    (5,  'ACC001', 'GOOG', 'BUY',   15.0000, 2750.1000, TIMESTAMP '2026-02-19 13:07:55'),
+    (6,  'ACC002', 'TSLA', 'BUY',  200.0000, 208.5000, TIMESTAMP '2026-01-08 10:11:34'),
+    (7,  'ACC002', 'TSLA', 'SELL',  50.0000, 221.8000, TIMESTAMP '2026-02-26 15:23:17'),
+    (8,  'ACC002', 'NVDA', 'BUY',   75.0000, 470.2000, TIMESTAMP '2026-01-30 09:45:02'),
+    (9,  'ACC002', 'NVDA', 'BUY',   25.0000, 495.6000, TIMESTAMP '2026-03-12 11:32:48'),
+    (10, 'ACC002', 'AMD',  'BUY',  150.0000, 102.4000, TIMESTAMP '2026-02-04 13:51:19'),
+    (11, 'ACC003', 'AAPL', 'BUY',  300.0000, 138.9000, TIMESTAMP '2026-01-11 10:02:43'),
+    (12, 'ACC003', 'AAPL', 'BUY',  100.0000, 145.2000, TIMESTAMP '2026-02-14 09:28:55'),
+    (13, 'ACC003', 'AMZN', 'BUY',   40.0000, 155.3000, TIMESTAMP '2026-01-25 14:17:11'),
+    (14, 'ACC003', 'AMZN', 'SELL',  10.0000, 162.8000, TIMESTAMP '2026-03-07 11:09:28'),
+    (15, 'ACC003', 'META', 'BUY',   60.0000, 325.8000, TIMESTAMP '2026-02-21 15:44:06');
