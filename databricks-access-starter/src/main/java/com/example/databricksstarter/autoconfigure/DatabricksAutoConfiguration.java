@@ -31,12 +31,18 @@ public class DatabricksAutoConfiguration {
         HikariDataSource ds = new HikariDataSource();
         ds.setPoolName("databricks-hikari-pool");
         ds.setJdbcUrl(props.getJdbcUrl());
+        ds.setDriverClassName("com.databricks.client.jdbc.Driver");
         DatabricksProperties.HikariSettings h = props.getHikari();
         ds.setMaximumPoolSize(h.getMaximumPoolSize());
         ds.setMinimumIdle(h.getMinimumIdle());
         ds.setConnectionTimeout(h.getConnectionTimeout());
         ds.setIdleTimeout(h.getIdleTimeout());
         ds.setMaxLifetime(h.getMaxLifetime());
+        ds.setAutoCommit(h.isAutoCommit());
+        ds.setConnectionTestQuery(h.getConnectionTestQuery());
+        ds.setValidationTimeout(h.getValidationTimeout());
+        ds.setKeepaliveTime(h.getKeepaliveTime());
+        ds.setLeakDetectionThreshold(h.getLeakDetectionThreshold());
         return ds;
     }
 
