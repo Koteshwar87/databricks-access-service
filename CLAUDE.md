@@ -7,8 +7,8 @@ A Maven multi-module repo with **three reference patterns** for integrating Data
 | Module | Shape | Pattern | Demo domain | Endpoint |
 |---|---|---|---|---|
 | `databricks-only/` | runnable app | Single Databricks DataSource | Market indices | `GET /api/indices`, `GET /api/indices/{symbol}` |
-| `databricks-pg-coexist/` | runnable app | Two DataSources in one app, **explicit per-dataset routing** via `DataLocationRegistry`, **no fallback** | Portfolio holdings (live=PG, historical=Databricks) | `GET /api/holdings/live`, `GET /api/holdings/historical` |
-| `databricks-pg-fallback/` | runnable app | Databricks primary, **implicit PG fallback on failure** via Resilience4j `@CircuitBreaker(fallbackMethod=…)` | Trade history (same rows mirrored in both stores) | `GET /api/trades?account=…` |
+| `databricks-pg-coexist/` | runnable app | Two DataSources in one app, **explicit per-dataset routing** via `DataLocationRegistry`, **no fallback**. Consumes `databricks-access-starter` for its Databricks side. | Portfolio holdings (live=PG, historical=Databricks) | `GET /api/holdings/live`, `GET /api/holdings/historical` |
+| `databricks-pg-fallback/` | runnable app | Databricks primary, **implicit PG fallback on failure** via Resilience4j `@CircuitBreaker(fallbackMethod=…)`. Consumes `databricks-access-starter` for its Databricks side. | Trade history (same rows mirrored in both stores) | `GET /api/trades?account=…` |
 | `databricks-access-starter/` | **library JAR** | Spring Boot 3 auto-configured starter — host adds dep + sets `app.databricks.*`, gets qualified `databricksDataSource` + `databricksJdbcTemplate` without touching its existing primary DataSource | — | — (host provides REST/repos) |
 
 Each module has its own README with full setup, env vars, Docker compose (where applicable), Databricks DDL/seed, and curl-based test scenarios (or host integration steps for the starter). **Always read the target module's README before making changes there** — module-specific details (port numbers, container names, table names, bean qualifiers) live in the README, not here.
@@ -116,6 +116,6 @@ The reference modules deliberately skip these — they're host-app concerns or f
 - **Tests** — user explicitly deferred.
 - **CI/CD, code quality tooling, OpenAPI docs, Bean Validation on request params, BigDecimal for money, correlation IDs, Micrometer metrics, `@Profile` separation.**
 - **Data sync** between Databricks and PG for the fallback module — demo manually seeds both with identical rows; production setups would use CDC, event-driven sync, or dual-writes.
-- **OAuth M2M auth** is scaffolded only in `databricks-only/`. The other two modules use PAT only — port the OAuth path from `databricks-only/` when needed.
+- **OAuth M2M auth** in `databricks-only/` is a self-contained scaffold (PAT or OAuth via its own `DatabricksProperties`). `databricks-pg-coexist/` and `databricks-pg-fallback/` get OAuth M2M from the `databricks-access-starter` they consume (M2M-only — no PAT).
 - **Pagination + sort whitelist** only in `databricks-only/`. The other two modules use simple list endpoints — port when needed.
 - **Top-level repo README** comparing all three variants side by side — natural next step but not done yet.

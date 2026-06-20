@@ -2,6 +2,8 @@
 
 **Pattern**: Both Databricks and Postgres DataSources live in the same Spring Boot app. Routing is decided **per-dataset** at startup from yml config (the `DataLocationRegistry`). There is **no fallback** between stores — if a dataset's configured store is down, that dataset's endpoints fail; the other dataset's endpoints keep working. For fallback semantics, see `databricks-pg-fallback/` (variant 3).
 
+> **Databricks connectivity comes from the [`databricks-access-starter`](../databricks-access-starter/README.md) module.** This module declares the starter as a dependency and only sets `app.databricks.*` properties; the `databricksDataSource`, `databricksJdbcTemplate`, and `databricks` health indicator beans are auto-configured by the starter. This module owns only the Postgres side, the routing logic, and the domain code.
+
 ## Demo scenario: portfolio holdings
 
 Two datasets, each in its natural store:
@@ -74,9 +76,12 @@ PowerShell:
 ```powershell
 $env:DATABRICKS_HOST = "dbc-xxxxxxxx-xxxx.cloud.databricks.com"
 $env:DATABRICKS_HTTP_PATH = "/sql/1.0/warehouses/abc..."
-$env:DATABRICKS_TOKEN = "dapi....your-token..."
+$env:DATABRICKS_CLIENT_ID = "your-service-principal-application-id"
+$env:DATABRICKS_CLIENT_SECRET = "your-service-principal-secret"
 mvn -pl databricks-pg-coexist spring-boot:run
 ```
+
+Authentication is **OAuth M2M** (service principal), provided by the starter. A PAT will not work — the workspace you point at must have a service principal with access to the SQL warehouse and the `historical_holdings` table.
 
 PG defaults to `jdbc:postgresql://localhost:5432/holdings` with user/pass `postgres`/`postgres` — override via `PG_URL`, `PG_USERNAME`, `PG_PASSWORD` if needed.
 
@@ -123,7 +128,5 @@ For an actual migration scenario (same data mirrored in both stores during cutov
 
 To keep the routing pattern visible, this module omits features that `databricks-only/` has:
 - Pagination + sort whitelist
-- OAuth M2M auth scaffold (PAT only here)
-- Configurable query timeout
 
-Adapt those from `databricks-only/` when you take this pattern into a real host app.
+Databricks auth (OAuth M2M) and the configurable query timeout now come from the [`databricks-access-starter`](../databricks-access-starter/README.md) — they're no longer hand-rolled here. Adapt the pagination/sort pieces from `databricks-only/` when you take this pattern into a real host app.
