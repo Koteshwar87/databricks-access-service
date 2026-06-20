@@ -56,13 +56,10 @@ app:
     query-timeout-seconds: 60
     client-id: ${DATABRICKS_CLIENT_ID}        # service-principal application id
     client-secret: ${DATABRICKS_CLIENT_SECRET}  # service-principal secret (from your secrets manager)
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+    # hikari: <override any default below if needed>
 ```
+
+The starter ships production-tuned Hikari defaults — you don't need to specify the `hikari:` block unless you want to override something. See the configuration reference below for what's set out of the box.
 
 Authentication is **OAuth M2M** (Machine-to-Machine) with a Databricks service principal. The starter wires `AuthMech=11;Auth_Flow=1;OAuth2ClientId=…;OAuth2Secret=…` into the JDBC URL; the driver fetches and refreshes the short-lived bearer token automatically — your application code never sees or handles tokens.
 
@@ -130,9 +127,14 @@ The existing `/actuator/health/db` component (your PG indicator) is unchanged.
 | `app.databricks.client-secret` | String | (required) | OAuth M2M service-principal secret. Source from your secrets manager. |
 | `app.databricks.hikari.maximum-pool-size` | int | `5` | Databricks connections are expensive; keep small. |
 | `app.databricks.hikari.minimum-idle` | int | `1` | |
-| `app.databricks.hikari.connection-timeout` | long (ms) | `30000` | |
-| `app.databricks.hikari.idle-timeout` | long (ms) | `600000` | |
-| `app.databricks.hikari.max-lifetime` | long (ms) | `1800000` | |
+| `app.databricks.hikari.connection-timeout` | long (ms) | `60000` | Accommodates Databricks SQL-warehouse cold-start (30–60s). |
+| `app.databricks.hikari.idle-timeout` | long (ms) | `120000` | Aggressive idle eviction keeps the pool lean. |
+| `app.databricks.hikari.max-lifetime` | long (ms) | `3300000` | **Critical**: just under the 60-min OAuth M2M token lifetime, so connections are recycled before their bearer token can expire mid-use. Do not raise above ~3500000. |
+| `app.databricks.hikari.auto-commit` | boolean | `false` | Databricks has no real transactions; disabling avoids per-borrow toggle round trips. |
+| `app.databricks.hikari.connection-test-query` | String | `SELECT 1` | Fallback if the driver's `Connection.isValid()` is broken or slow. |
+| `app.databricks.hikari.validation-timeout` | long (ms) | `10000` | How long the validation query is allowed to run. |
+| `app.databricks.hikari.keepalive-time` | long (ms) | `180000` | Pings idle connections every 3 min so intermediate firewalls / load balancers don't kill them. |
+| `app.databricks.hikari.leak-detection-threshold` | long (ms) | `60000` | Logs a warning if a connection isn't returned within this window — catches connection-leak bugs. |
 
 Note: `app.databricks.hikari.*` is intentionally **not** under `spring.datasource.hikari.*` — that namespace belongs to the host's primary PG pool, which the starter never touches.
 
@@ -154,13 +156,86 @@ The starter then steps aside for that bean.
 
 ## Recommended add-on: Resilience4j
 
-The starter intentionally does **not** ship retry/circuit-breaker wrapping — different hosts have different resiliency conventions. For production use, the recommended pattern is:
+The starter intentionally does **not** ship retry/circuit-breaker config — Resilience4j is a host-wide concern (your other downstreams use it too), and the right thresholds depend on your team's SLA. But there's a recommended baseline tuned for Databricks's failure modes (warehouse cold-starts, transient SQL errors), and you should adopt something close to it.
 
-1. Add `io.github.resilience4j:resilience4j-spring-boot3` to the host
-2. Annotate the host's Databricks-backed repository methods with `@Retry(name = "databricks")` and `@CircuitBreaker(name = "databricks")`
-3. Configure under `resilience4j.*` in the host's `application.yml`
+### 1. Add the dependency to your host
 
-See `databricks-pg-fallback/README.md` and the source under `databricks-pg-fallback/src/main/java/.../service/TradeHistoryService.java` for a working example of this pattern (including a fallback method to a secondary store).
+```xml
+<dependency>
+  <groupId>io.github.resilience4j</groupId>
+  <artifactId>resilience4j-spring-boot3</artifactId>
+  <version>2.2.0</version>
+</dependency>
+```
+
+### 2. Add this `resilience4j` block to the host's `application.yml`
+
+```yaml
+resilience4j:
+  retry:
+    instances:
+      databricks:
+        max-attempts: 3
+        wait-duration: 1s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.dao.DataAccessException
+          - java.sql.SQLTransientException
+  circuitbreaker:
+    instances:
+      databricks:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+```
+
+What this gives you:
+
+- **Retry**: up to 3 attempts on transient SQL errors, with 1s / 2s / 4s exponential backoff. Permanent errors (`PERMISSION_DENIED`, SQL syntax, etc.) propagate immediately — only `DataAccessException` and `SQLTransientException` are retried.
+- **Circuit breaker**: opens after 5+ failures in any 10-call window with ≥50% failure rate. Stays open 30s, then half-opens to admit 3 probe calls. If they succeed, closes; otherwise re-opens. Prevents retry storms against a known-dead warehouse.
+
+### 3. Annotate your Databricks-backed methods
+
+```java
+@Service
+@RequiredArgsConstructor
+public class MarketDataService {
+
+    private final MarketDataRepository repo;
+
+    @Retry(name = "databricks")
+    @CircuitBreaker(name = "databricks")
+    public List<MarketIndex> getAll() {
+        return repo.findAll();
+    }
+}
+```
+
+### Optional: fallback method (`@CircuitBreaker(fallbackMethod = "...")`)
+
+If you have a fallback data source (e.g. a Postgres mirror) and want the failure to be invisible to the caller, declare a fallback method in the same class with the original signature plus a trailing `Throwable`:
+
+```java
+@Retry(name = "databricks")
+@CircuitBreaker(name = "databricks", fallbackMethod = "getFromPg")
+public List<MarketIndex> getAll() {
+    return repo.findAll();
+}
+
+private List<MarketIndex> getFromPg(Throwable cause) {
+    log.warn("Databricks failed, falling back to PG: {}", cause.getMessage());
+    return pgRepo.findAll();
+}
+```
+
+> **Important**: declare `fallbackMethod` only on `@CircuitBreaker` (the outer decorator), **not** on `@Retry`. Otherwise the retry's fallback fires before the circuit breaker ever sees the failure, and the CB never opens.
+
+See `databricks-pg-fallback/` in this repo for a full working example of the fallback pattern.
 
 ## What the starter intentionally does NOT include
 
