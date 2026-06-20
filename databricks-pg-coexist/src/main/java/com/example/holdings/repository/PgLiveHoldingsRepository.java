@@ -1,7 +1,6 @@
 package com.example.holdings.repository;
 
 import com.example.holdings.model.Holding;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -28,7 +27,7 @@ public class PgLiveHoldingsRepository {
         );
     };
 
-    public PgLiveHoldingsRepository(@Qualifier("pgJdbcTemplate") JdbcTemplate jdbcTemplate) {
+    public PgLiveHoldingsRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

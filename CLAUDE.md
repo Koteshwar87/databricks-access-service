@@ -63,15 +63,15 @@ These hold across all three modules. Module-specific details (table names, env v
 ### Naming
 - Each module has its own root Java package: `com.example.databricksaccess`, `com.example.holdings`, `com.example.tradehistory`. Never share Java packages across modules.
 - Each module's `*Application.java` is annotated with `@ConfigurationPropertiesScan`.
-- Multi-DataSource modules name their beans explicitly: `databricksDataSource` / `databricksJdbcTemplate`, `pgDataSource` / `pgJdbcTemplate`. Repositories inject via `@Qualifier(...)`.
+- Bean topology in the runnable PG modules (`coexist`, `fallback`): **Postgres is the Spring Boot auto-configured *primary*** (`spring.datasource.*` → unqualified `dataSource` / `jdbcTemplate`; PG repos inject the plain `JdbcTemplate`). **Databricks is the *secondary qualified*** DataSource from `databricks-access-starter` (`databricksDataSource` / `databricksJdbcTemplate`, injected via `@Qualifier`). The starter's beans are `@Bean(defaultCandidate = false)` so they never win unqualified injection and never collide with the PG primary. `databricks-only` is single-DataSource with its own config.
 
 ### Config namespace
-- All custom properties live under `app.*` (e.g., `app.databricks.*`, `app.postgres.*`, `app.holdings.routing.*`). **Never** under `spring.datasource.*` — that steals config from the host app when embedded.
-- Hikari per DataSource: `app.databricks.hikari.*`, `app.postgres.hikari.*` (each `DataSourceConfig` `@Bean` binds with `@ConfigurationProperties("app.<x>.hikari")`).
+- A module's **own primary** datastore uses Spring Boot's standard `spring.datasource.*` (it *is* the app — `coexist`/`fallback` do this for PG). Everything else lives under `app.*` (e.g., `app.databricks.*`, `app.holdings.routing.*`). The **embeddable `databricks-access-starter` never uses `spring.datasource.*`** — that namespace belongs to the host it embeds into; it uses `app.databricks.*` exclusively.
+- Hikari: the PG primary binds `spring.datasource.hikari.*` (Spring Boot); the starter's Databricks pool binds `app.databricks.hikari.*`.
 
 ### Cross-cutting Spring
 - `@RestControllerAdvice` is **always** package-scoped (`basePackages = "com.example.<module>"`) so handlers don't leak into the host app.
-- Health indicators are `@Component("<name>")` so they surface as `/actuator/health/<name>`.
+- Custom health indicators are `@Component("<name>")` so they surface as `/actuator/health/<name>`. The PG primary in `coexist`/`fallback` uses Spring Boot's auto `db` indicator instead (no hand-rolled one); the starter supplies the `databricks` indicator.
 - Read-only API everywhere (Databricks side is analytical; PG side is also read-only in these demos).
 
 ### Resilience4j
@@ -79,6 +79,7 @@ These hold across all three modules. Module-specific details (table names, env v
 - In the fallback module specifically, `fallbackMethod` lives **only** on `@CircuitBreaker`, not on `@Retry`, and points at a method in the same class with `(originalParams..., Throwable cause)` signature.
 
 ### Postgres for multi-DataSource modules
+- PG is the **Spring Boot auto-configured primary** DataSource via `spring.datasource.*` — no hand-rolled `DataSourceConfig` or `PostgresProperties`. This mirrors a real host app (auto-configured PG primary + starter-provided Databricks secondary).
 - Each module has its own `docker-compose.yml` with `postgres:16-alpine` and an `init/` dir mounted at `/docker-entrypoint-initdb.d:ro`.
 - Init scripts: `01-schema.sql`, `02-seed.sql`. Schema script uses `CREATE TABLE IF NOT EXISTS`; seed script is plain `INSERT`.
 - Container names differ per module (`holdings-pg`, `tradehistory-pg`) but host port is `5432` for both — see the warning above.

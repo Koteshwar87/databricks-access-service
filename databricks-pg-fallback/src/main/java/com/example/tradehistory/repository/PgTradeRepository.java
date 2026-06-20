@@ -1,7 +1,6 @@
 package com.example.tradehistory.repository;
 
 import com.example.tradehistory.model.Trade;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -29,7 +28,7 @@ public class PgTradeRepository {
         );
     };
 
-    public PgTradeRepository(@Qualifier("pgJdbcTemplate") JdbcTemplate jdbcTemplate) {
+    public PgTradeRepository(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 

@@ -8,7 +8,8 @@ app:
     client-id: ${DATABRICKS_CLIENT_ID}
     client-secret: ${DATABRICKS_CLIENT_SECRET}
 
-  postgres:
+spring:
+  datasource:
     url: ${PG_URL:jdbc:postgresql://localhost:5432/tradehistory}
     username: ${PG_USERNAME:postgres}
     password: ${PG_PASSWORD:postgres}

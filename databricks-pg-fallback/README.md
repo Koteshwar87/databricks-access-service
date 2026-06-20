@@ -4,7 +4,11 @@
 
 Compare to `databricks-pg-coexist/`: that variant has each store own a *different* dataset and no fallback. This variant has *same data in both* with implicit fallback.
 
-> **Databricks connectivity comes from the [`databricks-access-starter`](../databricks-access-starter/README.md) module.** This module declares the starter as a dependency and only sets `app.databricks.*` properties; the `databricksDataSource`, `databricksJdbcTemplate`, and `databricks` health indicator beans are auto-configured by the starter. This module owns only the Postgres side, the fallback logic, and the domain code.
+> **This module mirrors a real host-app topology:**
+> - **Postgres is the Spring Boot auto-configured *primary* DataSource** — configured via standard `spring.datasource.*` properties. Spring Boot provides the primary `dataSource`, the unqualified `jdbcTemplate` (the PG repo injects it directly, no qualifier), and Actuator's `db` health indicator automatically. No hand-rolled PG config.
+> - **Databricks comes from the [`databricks-access-starter`](../databricks-access-starter/README.md)** as the *secondary qualified* DataSource. This module only sets `app.databricks.*` properties; the starter auto-configures `databricksDataSource`, `databricksJdbcTemplate` (injected via `@Qualifier`), and the `databricks` health indicator. Because those beans are `@Bean(defaultCandidate = false)`, they never collide with the auto-configured PG primary.
+>
+> This module owns only the fallback logic and domain code.
 
 ## Demo scenario: trade history
 

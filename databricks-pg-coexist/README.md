@@ -2,7 +2,11 @@
 
 **Pattern**: Both Databricks and Postgres DataSources live in the same Spring Boot app. Routing is decided **per-dataset** at startup from yml config (the `DataLocationRegistry`). There is **no fallback** between stores — if a dataset's configured store is down, that dataset's endpoints fail; the other dataset's endpoints keep working. For fallback semantics, see `databricks-pg-fallback/` (variant 3).
 
-> **Databricks connectivity comes from the [`databricks-access-starter`](../databricks-access-starter/README.md) module.** This module declares the starter as a dependency and only sets `app.databricks.*` properties; the `databricksDataSource`, `databricksJdbcTemplate`, and `databricks` health indicator beans are auto-configured by the starter. This module owns only the Postgres side, the routing logic, and the domain code.
+> **This module mirrors a real host-app topology:**
+> - **Postgres is the Spring Boot auto-configured *primary* DataSource** — configured via standard `spring.datasource.*` properties. Spring Boot provides the primary `dataSource`, the unqualified `jdbcTemplate` (PG repos inject it directly, no qualifier), and Actuator's `db` health indicator automatically. No hand-rolled PG config.
+> - **Databricks comes from the [`databricks-access-starter`](../databricks-access-starter/README.md)** as the *secondary qualified* DataSource. This module only sets `app.databricks.*` properties; the starter auto-configures `databricksDataSource`, `databricksJdbcTemplate` (injected via `@Qualifier`), and the `databricks` health indicator. Because those beans are `@Bean(defaultCandidate = false)`, they never collide with the auto-configured PG primary.
+>
+> This module owns only the routing logic and domain code.
 
 ## Demo scenario: portfolio holdings
 
@@ -83,7 +87,7 @@ mvn -pl databricks-pg-coexist spring-boot:run
 
 Authentication is **OAuth M2M** (service principal), provided by the starter. A PAT will not work — the workspace you point at must have a service principal with access to the SQL warehouse and the `historical_holdings` table.
 
-PG defaults to `jdbc:postgresql://localhost:5432/holdings` with user/pass `postgres`/`postgres` — override via `PG_URL`, `PG_USERNAME`, `PG_PASSWORD` if needed.
+PG is wired through standard `spring.datasource.*` (the Spring Boot auto-configured primary). It defaults to `jdbc:postgresql://localhost:5432/holdings` with user/pass `postgres`/`postgres` — override via `PG_URL`, `PG_USERNAME`, `PG_PASSWORD` if needed.
 
 ### 4. Hit the endpoints
 
@@ -94,7 +98,7 @@ curl 'http://localhost:8080/api/holdings/live?account=ACC001'
 # Historical (Databricks path — first call may be 30-60s if warehouse cold-starts)
 curl 'http://localhost:8080/api/holdings/historical?account=ACC001&from=2026-01-01&to=2026-05-01'
 
-# Both health components UP
+# Both health components UP: db (PG, auto-configured) and databricks (starter)
 curl http://localhost:8080/actuator/health
 ```
 
