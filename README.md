@@ -1,14 +1,22 @@
 # databricks-access-service
 
-A Maven multi-module **reference repo** demonstrating three patterns for integrating Databricks (via JDBC) into a Spring Boot application. Each module is an independently runnable Spring Boot app with its own demo domain and its own README. Pick the pattern that matches your situation, then adapt it into your host app.
+A Maven multi-module repo containing **three reference patterns** for integrating Databricks (via JDBC) into a Spring Boot application, plus **one library artifact** (`databricks-access-starter`) that packages the minimal-surface-area pattern as a real Spring Boot auto-configured starter for embedding into an existing host app.
 
 ## The three reference modules
+
+Each is an independently runnable Spring Boot app with its own demo domain and its own README. Pick the pattern that matches your situation.
 
 | Module | Pattern | Demo domain | Endpoint |
 |---|---|---|---|
 | [`databricks-only/`](databricks-only/README.md) | Single Databricks DataSource | Market indices | `GET /api/indices`, `GET /api/indices/{symbol}` |
 | [`databricks-pg-coexist/`](databricks-pg-coexist/README.md) | Two DataSources in one app, **explicit per-dataset routing** via `DataLocationRegistry`, no fallback | Portfolio holdings (live=PG, historical=Databricks) | `GET /api/holdings/live`, `GET /api/holdings/historical` |
 | [`databricks-pg-fallback/`](databricks-pg-fallback/README.md) | Databricks primary, **transparent PG fallback on failure** via Resilience4j `@CircuitBreaker(fallbackMethod=…)` | Trade history (same rows mirrored in both stores) | `GET /api/trades?account=…` |
+
+## The library artifact
+
+| Module | Shape | Purpose |
+|---|---|---|
+| [`databricks-access-starter/`](databricks-access-starter/README.md) | **Library JAR** (not a runnable app) | Spring Boot 3 auto-configured starter. Host app adds one Maven dep + sets `app.databricks.*` properties; gets a qualified `databricksDataSource` + `databricksJdbcTemplate` without disturbing its existing primary `DataSource`. Use this when integrating the coexist-style pattern into an existing PG-backed Spring Boot app at work. |
 
 ### When to pick which
 
@@ -30,29 +38,33 @@ A Maven multi-module **reference repo** demonstrating three patterns for integra
 ## Quick start
 
 ```bash
-# Build all three modules
+# Build everything
 mvn -q -DskipTests package
 
-# Run a single module (env vars required — see the module's README)
+# Run one of the reference apps (env vars required — see the module's README)
 mvn -pl databricks-only spring-boot:run
 mvn -pl databricks-pg-coexist spring-boot:run
 mvn -pl databricks-pg-fallback spring-boot:run
+
+# Install the starter into your local Maven repo for use in an external host app
+mvn -pl databricks-access-starter -am install
 ```
 
-Each module's README has the full setup: Databricks DDL/seed, docker-compose for Postgres (where applicable), env vars, and curl-based test scenarios.
+Each runnable module's README has the full setup: Databricks DDL/seed, docker-compose for Postgres (where applicable), env vars, and curl-based test scenarios. The starter's README has host-integration instructions.
 
-**Cannot run all three simultaneously**: each module's server defaults to port `8080`. Modules 2 & 3 also both bind host port `5432` for their Postgres container — start one and stop the other when switching.
+**Cannot run all three reference apps simultaneously**: each defaults to port `8080`. Modules 2 & 3 also both bind host port `5432` for their Postgres container — start one and stop the other when switching.
 
 ## Repository layout
 
 ```
 databricks-access-service/
-├── pom.xml                       ← aggregator (parent)
-├── README.md                     ← this file
-├── CLAUDE.md                     ← cross-cutting conventions for code agents
-├── databricks-only/              ← variant 1 (+ README)
-├── databricks-pg-coexist/        ← variant 2 (+ README + docker-compose.yml + init/)
-└── databricks-pg-fallback/       ← variant 3 (+ README + docker-compose.yml + init/)
+├── pom.xml                          ← aggregator (parent)
+├── README.md                        ← this file
+├── CLAUDE.md                        ← cross-cutting conventions for code agents
+├── databricks-only/                 ← reference variant 1 (+ README)
+├── databricks-pg-coexist/           ← reference variant 2 (+ README + docker-compose.yml + init/)
+├── databricks-pg-fallback/          ← reference variant 3 (+ README + docker-compose.yml + init/)
+└── databricks-access-starter/       ← library JAR (+ README)
 ```
 
 ## Cross-module conventions
