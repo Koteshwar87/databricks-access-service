@@ -22,7 +22,7 @@ import javax.sql.DataSource;
 @EnableConfigurationProperties(DatabricksProperties.class)
 public class DatabricksAutoConfiguration {
 
-    @Bean
+    @Bean(defaultCandidate = false)
     @ConditionalOnMissingBean(name = "databricksDataSource")
     public DataSource databricksDataSource(DatabricksProperties props) {
         String maskedUrl = props.getJdbcUrl()
@@ -43,7 +43,7 @@ public class DatabricksAutoConfiguration {
         return ds;
     }
 
-    @Bean
+    @Bean(defaultCandidate = false)
     @ConditionalOnMissingBean(name = "databricksJdbcTemplate")
     public JdbcTemplate databricksJdbcTemplate(
             @Qualifier("databricksDataSource") DataSource databricksDataSource,

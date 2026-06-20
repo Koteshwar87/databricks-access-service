@@ -10,8 +10,8 @@ When the host adds this dependency and sets `app.databricks.enabled=true`, the s
 
 | Bean | Type | Qualifier name | Notes |
 |---|---|---|---|
-| `databricksDataSource` | `javax.sql.DataSource` (Hikari) | `databricksDataSource` | **Not `@Primary`** — host's existing DataSource remains primary |
-| `databricksJdbcTemplate` | `org.springframework.jdbc.core.JdbcTemplate` | `databricksJdbcTemplate` | Wraps `databricksDataSource`; per-query timeout applied |
+| `databricksDataSource` | `javax.sql.DataSource` (Hikari) | `databricksDataSource` | Declared with `@Bean(defaultCandidate = false)` — invisible to unqualified `@Autowired DataSource`; only resolves when explicitly qualified |
+| `databricksJdbcTemplate` | `org.springframework.jdbc.core.JdbcTemplate` | `databricksJdbcTemplate` | Same — `@Bean(defaultCandidate = false)`, qualifier-only. Wraps `databricksDataSource`; per-query timeout applied |
 | `databricks` | `org.springframework.boot.actuate.health.HealthIndicator` | `databricks` | Only created when Spring Boot Actuator is on the classpath; surfaces at `/actuator/health/databricks` |
 
 That's it. No controllers, no repositories, no opinions about your domain model.
@@ -21,11 +21,11 @@ That's it. No controllers, no repositories, no opinions about your domain model.
 | Spring Boot stage | What happens | Why it's safe |
 |---|---|---|
 | `DataSourceAutoConfiguration` runs | Creates the host's `dataSource` bean from `spring.datasource.*`. Marks it `@Primary`. | The starter sets no `spring.datasource.*` properties. |
-| `DatabricksAutoConfiguration` runs | Creates `databricksDataSource` (not `@Primary`). | Multiple `DataSource` beans are legal as long as one is primary — and the host's PG one is. |
-| `JdbcTemplateAutoConfiguration` runs | Creates the host's default `JdbcTemplate` against the primary DataSource (PG). | The starter creates `databricksJdbcTemplate` separately; different bean name, no collision. |
-| Host's existing `@Autowired DataSource ds` | Resolves to PG. | Unchanged. |
+| `DatabricksAutoConfiguration` runs | Creates `databricksDataSource` with `@Bean(defaultCandidate = false)`. | The bean is excluded from default autowiring candidacy — Spring will never even consider it for an unqualified `@Autowired DataSource`. No ambiguity with the host's PG bean, regardless of whether the host's bean is `@Primary` or not. |
+| `JdbcTemplateAutoConfiguration` runs | Creates the host's default `JdbcTemplate` against the primary DataSource (PG). | Our `databricksJdbcTemplate` is also `defaultCandidate = false` — same protection. |
+| Host's existing `@Autowired DataSource ds` | Resolves to PG. | Unchanged. Spring sees our bean as a non-default candidate and skips it; PG is the only one in the running. |
 | Host's existing `@Autowired JdbcTemplate jdbc` | Resolves to the PG-backed template. | Unchanged. |
-| Host's new `@Autowired @Qualifier("databricksJdbcTemplate") JdbcTemplate jdbc` | Resolves to the Databricks-backed template. | New capability; purely additive. |
+| Host's new `@Autowired @Qualifier("databricksJdbcTemplate") JdbcTemplate jdbc` | Resolves to the Databricks-backed template. | Qualifier-based injection bypasses the `defaultCandidate` filter. New capability; purely additive. |
 
 ## Host integration
 
