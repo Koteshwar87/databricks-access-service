@@ -1,0 +1,64 @@
+{
+  "properties": [
+    {
+      "name": "app.databricks.hikari.maximum-pool-size",
+      "type": "java.lang.Integer",
+      "description": "Max size of the Databricks Hikari pool. Databricks connections are expensive — keep small.",
+      "defaultValue": 5
+    },
+    {
+      "name": "app.databricks.hikari.minimum-idle",
+      "type": "java.lang.Integer",
+      "description": "Minimum number of idle connections Hikari maintains in the Databricks pool.",
+      "defaultValue": 1
+    },
+    {
+      "name": "app.databricks.hikari.connection-timeout",
+      "type": "java.lang.Long",
+      "description": "Max wait (ms) for a connection from the Databricks pool. Accommodates SQL-warehouse cold-start (30-60s).",
+      "defaultValue": 60000
+    },
+    {
+      "name": "app.databricks.hikari.idle-timeout",
+      "type": "java.lang.Long",
+      "description": "Max time (ms) a connection may sit idle before eviction.",
+      "defaultValue": 120000
+    },
+    {
+      "name": "app.databricks.hikari.max-lifetime",
+      "type": "java.lang.Long",
+      "description": "Max lifetime (ms) of a connection. Kept just under the ~60-min OAuth M2M token TTL so connections are recycled before their bearer token expires. Do not raise above ~3500000.",
+      "defaultValue": 3300000
+    },
+    {
+      "name": "app.databricks.hikari.auto-commit",
+      "type": "java.lang.Boolean",
+      "description": "Auto-commit state of pooled connections. Databricks has no real transactions; disabling avoids per-borrow toggle round trips.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.databricks.hikari.connection-test-query",
+      "type": "java.lang.String",
+      "description": "Query used to validate connections. Fallback for when the driver's Connection.isValid() is broken or slow.",
+      "defaultValue": "SELECT 1"
+    },
+    {
+      "name": "app.databricks.hikari.validation-timeout",
+      "type": "java.lang.Long",
+      "description": "Max time (ms) the connection-validation query may run.",
+      "defaultValue": 10000
+    },
+    {
+      "name": "app.databricks.hikari.keepalive-time",
+      "type": "java.lang.Long",
+      "description": "Interval (ms) between keepalive pings on idle connections, preventing intermediate firewalls / load balancers from killing them.",
+      "defaultValue": 180000
+    },
+    {
+      "name": "app.databricks.hikari.leak-detection-threshold",
+      "type": "java.lang.Long",
+      "description": "If a borrowed connection is not returned within this window (ms), Hikari logs a leak warning. 0 disables.",
+      "defaultValue": 60000
+    }
+  ]
+}

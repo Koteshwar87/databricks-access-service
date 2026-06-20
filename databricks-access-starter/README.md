@@ -151,18 +151,35 @@ The existing `/actuator/health/db` component (your PG indicator) is unchanged.
 | `app.databricks.query-timeout-seconds` | int | `60` | Per-query upper bound; applied to `JdbcTemplate`. |
 | `app.databricks.client-id` | String | (required) | OAuth M2M service-principal application id. |
 | `app.databricks.client-secret` | String | (required) | OAuth M2M service-principal secret. Source from your secrets manager. |
-| `app.databricks.hikari.maximum-pool-size` | int | `5` | Databricks connections are expensive; keep small. |
-| `app.databricks.hikari.minimum-idle` | int | `1` | |
-| `app.databricks.hikari.connection-timeout` | long (ms) | `60000` | Accommodates Databricks SQL-warehouse cold-start (30–60s). |
-| `app.databricks.hikari.idle-timeout` | long (ms) | `120000` | Aggressive idle eviction keeps the pool lean. |
-| `app.databricks.hikari.max-lifetime` | long (ms) | `3300000` | **Critical**: just under the 60-min OAuth M2M token lifetime, so connections are recycled before their bearer token can expire mid-use. Do not raise above ~3500000. |
-| `app.databricks.hikari.auto-commit` | boolean | `false` | Databricks has no real transactions; disabling avoids per-borrow toggle round trips. |
-| `app.databricks.hikari.connection-test-query` | String | `SELECT 1` | Fallback if the driver's `Connection.isValid()` is broken or slow. |
-| `app.databricks.hikari.validation-timeout` | long (ms) | `10000` | How long the validation query is allowed to run. |
-| `app.databricks.hikari.keepalive-time` | long (ms) | `180000` | Pings idle connections every 3 min so intermediate firewalls / load balancers don't kill them. |
-| `app.databricks.hikari.leak-detection-threshold` | long (ms) | `60000` | Logs a warning if a connection isn't returned within this window — catches connection-leak bugs. |
+
+### Databricks Hikari pool (`app.databricks.hikari.*`)
+
+The Databricks `HikariDataSource` is bound with `@ConfigurationProperties("app.databricks.hikari")`, so **the entire HikariCP property surface is overridable** — anything you could set under Spring Boot's own `spring.datasource.hikari.*` you can set here (`read-only`, `connection-init-sql`, `initialization-fail-timeout`, `data-source-properties.*`, `transaction-isolation`, …). The starter seeds production-tuned defaults first; any property you supply overrides them, and unspecified properties keep the defaults.
+
+The commonly-tuned keys and their starter defaults:
+
+| Property | Default | Notes |
+|---|---|---|
+| `app.databricks.hikari.maximum-pool-size` | `5` | Databricks connections are expensive; keep small. |
+| `app.databricks.hikari.minimum-idle` | `1` | |
+| `app.databricks.hikari.connection-timeout` | `60000` | Accommodates Databricks SQL-warehouse cold-start (30–60s). |
+| `app.databricks.hikari.idle-timeout` | `120000` | Aggressive idle eviction keeps the pool lean. |
+| `app.databricks.hikari.max-lifetime` | `3300000` | **Critical**: just under the 60-min OAuth M2M token lifetime, so connections are recycled before their bearer token can expire mid-use. Do not raise above ~3500000. |
+| `app.databricks.hikari.auto-commit` | `false` | Databricks has no real transactions; disabling avoids per-borrow toggle round trips. |
+| `app.databricks.hikari.connection-test-query` | `SELECT 1` | Fallback if the driver's `Connection.isValid()` is broken or slow. |
+| `app.databricks.hikari.validation-timeout` | `10000` | How long the validation query is allowed to run. |
+| `app.databricks.hikari.keepalive-time` | `180000` | Pings idle connections every 3 min so intermediate firewalls / load balancers don't kill them. |
+| `app.databricks.hikari.leak-detection-threshold` | `60000` | Logs a warning if a connection isn't returned within this window — catches connection-leak bugs. |
 
 Note: `app.databricks.hikari.*` is intentionally **not** under `spring.datasource.hikari.*` — that namespace belongs to the host's primary PG pool, which the starter never touches.
+
+### Isolation from the host's PG pool
+
+The Databricks `HikariDataSource` is a fully separate bean that cannot interfere with the host's Spring Boot auto-configured (primary, typically Postgres) `HikariDataSource`. Three independent mechanisms guarantee this:
+
+1. **Ordering** — `@AutoConfiguration(after = {DataSourceAutoConfiguration.class, JdbcTemplateAutoConfiguration.class})`. The host's primary `DataSource` and unqualified `JdbcTemplate` are created *before* the starter's beans register, so Spring Boot's `@ConditionalOnMissingBean(DataSource.class)` and `@ConditionalOnSingleCandidate(DataSource.class)` evaluate without ever seeing the Databricks bean. The host's PG auto-config proceeds exactly as if the starter weren't present.
+2. **Non-default candidate** — `@Bean(defaultCandidate = false)`. The Databricks beans are excluded from plain-type autowiring (and from those `@Conditional` checks), so unqualified `@Autowired DataSource` / `JdbcTemplate` in the host always resolves to PG; only `@Qualifier("databricks…")` reaches ours.
+3. **Per-bean prefix binding** — `app.databricks.hikari.*` binds only the Databricks pool; the host's `spring.datasource.hikari.*` binds only the PG pool. Distinct bean instances, distinct prefixes, zero cross-binding.
 
 ## Overriding a starter bean
 
