@@ -12,6 +12,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.simple.JdbcClient;
 
 import javax.sql.DataSource;
 
@@ -54,6 +55,13 @@ public class DatabricksAutoConfiguration {
         JdbcTemplate jdbc = new JdbcTemplate(databricksDataSource);
         jdbc.setQueryTimeout(props.getQueryTimeoutSeconds());
         return jdbc;
+    }
+
+    @Bean(defaultCandidate = false)
+    @ConditionalOnMissingBean(name = "databricksJdbcClient")
+    public JdbcClient databricksJdbcClient(
+            @Qualifier("databricksJdbcTemplate") JdbcTemplate databricksJdbcTemplate) {
+        return JdbcClient.create(databricksJdbcTemplate);
     }
 
     @Bean

@@ -12,6 +12,7 @@ When the host adds this dependency and sets `app.databricks.enabled=true`, the s
 |---|---|---|---|
 | `databricksDataSource` | `javax.sql.DataSource` (Hikari) | `databricksDataSource` | Declared with `@Bean(defaultCandidate = false)` — invisible to unqualified `@Autowired DataSource`; only resolves when explicitly qualified |
 | `databricksJdbcTemplate` | `org.springframework.jdbc.core.JdbcTemplate` | `databricksJdbcTemplate` | Same — `@Bean(defaultCandidate = false)`, qualifier-only. Wraps `databricksDataSource`; per-query timeout applied |
+| `databricksJdbcClient` | `org.springframework.jdbc.core.simple.JdbcClient` | `databricksJdbcClient` | Same — `@Bean(defaultCandidate = false)`, qualifier-only. Fluent Spring 6.1+ wrapper over `databricksJdbcTemplate`; recommended for new repository code |
 | `databricks` | `org.springframework.boot.actuate.health.HealthIndicator` | `databricks` | Only created when Spring Boot Actuator is on the classpath; surfaces at `/actuator/health/databricks` |
 
 That's it. No controllers, no repositories, no opinions about your domain model.
@@ -77,7 +78,32 @@ The starter reads only typed Spring `@ConfigurationProperties`. It does **not** 
 
 Anything that becomes a Spring `Environment` source works.
 
-### 3. Inject the qualified `JdbcTemplate`
+### 3. Inject the qualified bean — `JdbcClient` (recommended) or `JdbcTemplate`
+
+**Recommended: `JdbcClient`** (Spring Framework 6.1+, fluent API):
+
+```java
+@Repository
+@RequiredArgsConstructor
+public class MarketDataRepository {
+
+    @Qualifier("databricksJdbcClient")
+    private final JdbcClient databricks;
+
+    public List<MarketIndex> findByCountry(String country) {
+        return databricks.sql("""
+                SELECT symbol, name, country, value, currency
+                FROM market_indices
+                WHERE country = :country
+                """)
+            .param("country", country)
+            .query(MarketIndex.class)
+            .list();
+    }
+}
+```
+
+**Or, classic `JdbcTemplate`** if you prefer (same underlying execution path, both go through the same Hikari pool and respect the same query timeout):
 
 ```java
 @Repository
@@ -100,7 +126,7 @@ public class MarketDataRepository {
 }
 ```
 
-The repository is yours to write — the starter just exposes the `JdbcTemplate`.
+The repository is yours to write — the starter just exposes the qualified beans.
 
 ### 4. (Optional) Verify the new health component
 
