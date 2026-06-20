@@ -11,7 +11,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 import javax.sql.DataSource;
@@ -53,15 +52,11 @@ public class DatabricksAutoConfiguration {
         return jdbc;
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @Bean
     @ConditionalOnClass(HealthIndicator.class)
-    static class DatabricksHealthConfiguration {
-
-        @Bean
-        @ConditionalOnMissingBean(name = "databricks")
-        public HealthIndicator databricks(
-                @Qualifier("databricksJdbcTemplate") JdbcTemplate databricksJdbcTemplate) {
-            return new DatabricksHealthIndicator(databricksJdbcTemplate);
-        }
+    @ConditionalOnMissingBean(name = "databricks")
+    public HealthIndicator databricks(
+            @Qualifier("databricksJdbcTemplate") JdbcTemplate databricksJdbcTemplate) {
+        return new DatabricksHealthIndicator(databricksJdbcTemplate);
     }
 }
