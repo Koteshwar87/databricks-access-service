@@ -9,8 +9,6 @@ import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
-import org.springframework.boot.autoconfigure.jdbc.JdbcTemplateAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,12 +17,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import javax.sql.DataSource;
 
 @Slf4j
-@AutoConfiguration(after = {DataSourceAutoConfiguration.class, JdbcTemplateAutoConfiguration.class})
+@AutoConfiguration
 @ConditionalOnProperty(prefix = "app.databricks", name = "enabled", havingValue = "true")
 @EnableConfigurationProperties(DatabricksProperties.class)
 public class DatabricksAutoConfiguration {
 
-    @Bean(name = "databricksDataSource")
+    @Bean
     @ConditionalOnMissingBean(name = "databricksDataSource")
     public DataSource databricksDataSource(DatabricksProperties props) {
         String maskedUrl = props.getJdbcUrl()
@@ -45,7 +43,7 @@ public class DatabricksAutoConfiguration {
         return ds;
     }
 
-    @Bean(name = "databricksJdbcTemplate")
+    @Bean
     @ConditionalOnMissingBean(name = "databricksJdbcTemplate")
     public JdbcTemplate databricksJdbcTemplate(
             @Qualifier("databricksDataSource") DataSource databricksDataSource,
@@ -59,7 +57,7 @@ public class DatabricksAutoConfiguration {
     @ConditionalOnClass(HealthIndicator.class)
     static class DatabricksHealthConfiguration {
 
-        @Bean(name = "databricks")
+        @Bean
         @ConditionalOnMissingBean(name = "databricks")
         public HealthIndicator databricks(
                 @Qualifier("databricksJdbcTemplate") JdbcTemplate databricksJdbcTemplate) {
