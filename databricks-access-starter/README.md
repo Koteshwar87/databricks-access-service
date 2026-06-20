@@ -54,13 +54,8 @@ app:
     catalog: workspace
     schema: demo
     query-timeout-seconds: 60
-
-    # ONE of these two auth modes (XOR — both or neither will fail startup):
-    token: ${DATABRICKS_TOKEN}
-    # OR:
-    # client-id: ${DATABRICKS_CLIENT_ID}
-    # client-secret: ${DATABRICKS_CLIENT_SECRET}
-
+    client-id: ${DATABRICKS_CLIENT_ID}        # service-principal application id
+    client-secret: ${DATABRICKS_CLIENT_SECRET}  # service-principal secret (from your secrets manager)
     hikari:
       maximum-pool-size: 5
       minimum-idle: 1
@@ -69,7 +64,9 @@ app:
       max-lifetime: 1800000
 ```
 
-The starter is opt-in via `app.databricks.enabled=true`. If that property is unset or false, the starter does nothing — the dependency is safe to add even before the team is ready to wire it in.
+Authentication is **OAuth M2M** (Machine-to-Machine) with a Databricks service principal. The starter wires `AuthMech=11;Auth_Flow=1;OAuth2ClientId=…;OAuth2Secret=…` into the JDBC URL; the driver fetches and refreshes the short-lived bearer token automatically — your application code never sees or handles tokens.
+
+The starter is opt-in via `app.databricks.enabled=true`. If that property is unset or false, the starter does nothing — the dependency is safe to add even before the team is ready to wire it in. Once enabled, `client-id` and `client-secret` are required (validated as `@NotBlank` at startup).
 
 #### Where the property values come from
 
@@ -129,9 +126,8 @@ The existing `/actuator/health/db` component (your PG indicator) is unchanged.
 | `app.databricks.catalog` | String | (required) | Unity Catalog catalog name. |
 | `app.databricks.schema` | String | (required) | Schema/database name within the catalog. |
 | `app.databricks.query-timeout-seconds` | int | `60` | Per-query upper bound; applied to `JdbcTemplate`. |
-| `app.databricks.token` | String | — | PAT (personal access token). Mutually exclusive with `client-id`/`client-secret`. |
-| `app.databricks.client-id` | String | — | OAuth M2M service-principal client id. Requires `client-secret`. |
-| `app.databricks.client-secret` | String | — | OAuth M2M service-principal client secret. Requires `client-id`. |
+| `app.databricks.client-id` | String | (required) | OAuth M2M service-principal application id. |
+| `app.databricks.client-secret` | String | (required) | OAuth M2M service-principal secret. Source from your secrets manager. |
 | `app.databricks.hikari.maximum-pool-size` | int | `5` | Databricks connections are expensive; keep small. |
 | `app.databricks.hikari.minimum-idle` | int | `1` | |
 | `app.databricks.hikari.connection-timeout` | long (ms) | `30000` | |

@@ -25,10 +25,8 @@ public class DatabricksAutoConfiguration {
     @ConditionalOnMissingBean(name = "databricksDataSource")
     public DataSource databricksDataSource(DatabricksProperties props) {
         String maskedUrl = props.getJdbcUrl()
-                .replaceAll("PWD=[^;]*;", "PWD=***;")
                 .replaceAll("OAuth2Secret=[^;]*;", "OAuth2Secret=***;");
-        log.info("Configuring Databricks DataSource (auth={}, url={})",
-                props.isOAuthMode() ? "OAuth M2M" : "PAT", maskedUrl);
+        log.info("Configuring Databricks DataSource (OAuth M2M, url={})", maskedUrl);
 
         HikariDataSource ds = new HikariDataSource();
         ds.setPoolName("databricks-hikari-pool");
