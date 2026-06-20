@@ -1,18 +1,15 @@
 app:
   databricks:
+    enabled: true
     hostname: ${DATABRICKS_HOST}
     http-path: ${DATABRICKS_HTTP_PATH}
     catalog: ${DATABRICKS_CATALOG:workspace}
     schema: ${DATABRICKS_SCHEMA:demo}
-    token: ${DATABRICKS_TOKEN}
-    hikari:
-      maximum-pool-size: 5
-      minimum-idle: 1
-      connection-timeout: 30000
-      idle-timeout: 600000
-      max-lifetime: 1800000
+    client-id: ${DATABRICKS_CLIENT_ID}
+    client-secret: ${DATABRICKS_CLIENT_SECRET}
 
-  postgres:
+spring:
+  datasource:
     url: ${PG_URL:jdbc:postgresql://localhost:5432/tradehistory}
     username: ${PG_USERNAME:postgres}
     password: ${PG_PASSWORD:postgres}

@@ -4,6 +4,12 @@
 
 Compare to `databricks-pg-coexist/`: that variant has each store own a *different* dataset and no fallback. This variant has *same data in both* with implicit fallback.
 
+> **This module mirrors a real host-app topology:**
+> - **Postgres is the Spring Boot auto-configured *primary* DataSource** — configured via standard `spring.datasource.*` properties. Spring Boot provides the primary `dataSource`, the unqualified `jdbcTemplate` (the PG repo injects it directly, no qualifier), and Actuator's `db` health indicator automatically. No hand-rolled PG config.
+> - **Databricks comes from the [`databricks-access-starter`](../databricks-access-starter/README.md)** as the *secondary qualified* DataSource. This module only sets `app.databricks.*` properties; the starter auto-configures `databricksDataSource`, `databricksJdbcTemplate` (injected via `@Qualifier`), and the `databricks` health indicator. Because those beans are `@Bean(defaultCandidate = false)`, they never collide with the auto-configured PG primary.
+>
+> This module owns only the fallback logic and domain code.
+
 ## Demo scenario: trade history
 
 `trades` table — executed trades for client accounts. Same shape (`id, account, symbol, side, quantity, price, exec_time`), same 15 rows, in both stores. The Databricks JDBC URL uses `workspace.demo.trades`; PG uses `trades` in the `tradehistory` database.
@@ -102,9 +108,12 @@ PowerShell:
 ```powershell
 $env:DATABRICKS_HOST = "dbc-xxxxxxxx-xxxx.cloud.databricks.com"
 $env:DATABRICKS_HTTP_PATH = "/sql/1.0/warehouses/abc..."
-$env:DATABRICKS_TOKEN = "dapi....your-token..."
+$env:DATABRICKS_CLIENT_ID = "your-service-principal-application-id"
+$env:DATABRICKS_CLIENT_SECRET = "your-service-principal-secret"
 mvn -pl databricks-pg-fallback spring-boot:run
 ```
+
+Authentication is **OAuth M2M** (service principal), provided by the starter. A PAT will not work — the workspace you point at must have a service principal with access to the SQL warehouse and the `trades` table.
 
 ### 4. Exercise the three scenarios
 
@@ -147,9 +156,7 @@ curl 'http://localhost:8080/api/trades?account=ACC001'
 
 To keep the fallback pattern visible, this module omits features that `databricks-only/` has:
 - Pagination + sort whitelist
-- OAuth M2M auth scaffold (PAT only)
-- Configurable query timeout
 
-Adapt those from `databricks-only/` when you take this pattern into a real host app.
+Databricks auth (OAuth M2M) and the configurable query timeout now come from the [`databricks-access-starter`](../databricks-access-starter/README.md) — they're no longer hand-rolled here. Adapt the pagination/sort pieces from `databricks-only/` when you take this pattern into a real host app.
 
 It also doesn't include a **data sync mechanism** between Databricks and PG — for the demo we manually seed both. In a real Strangler Fig setup you'd have CDC, event-driven sync, or dual-writes on the producer side keeping the two stores in agreement.

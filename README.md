@@ -18,6 +18,8 @@ Each is an independently runnable Spring Boot app with its own demo domain and i
 |---|---|---|
 | [`databricks-access-starter/`](databricks-access-starter/README.md) | **Library JAR** (not a runnable app) | Spring Boot 3 auto-configured starter. Host app adds one Maven dep + sets `app.databricks.*` properties; gets a qualified `databricksDataSource` + `databricksJdbcTemplate` without disturbing its existing primary `DataSource`. Use this when integrating the coexist-style pattern into an existing PG-backed Spring Boot app at work. |
 
+The `databricks-pg-coexist` and `databricks-pg-fallback` modules **consume this starter** for their Databricks connectivity (rather than hand-rolling it) — so they double as working examples of how to wire the starter into an app alongside a Postgres DataSource.
+
 ### When to pick which
 
 - **`databricks-only`** — Databricks is your only data source. Simplest. This module also carries the most production polish (OAuth M2M auth scaffold, pagination + sort whitelist, configurable query timeout) — port those forward when adopting another pattern into a real host app.
