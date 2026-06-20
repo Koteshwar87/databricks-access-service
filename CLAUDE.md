@@ -1,22 +1,24 @@
 # databricks-access-service
 
-A Maven multi-module reference repo demonstrating three patterns for integrating Databricks (via JDBC) into a Spring Boot app. The user will pick one of these patterns to adapt into a production host application that already runs Postgres-backed services with CloudWatch logging.
+A Maven multi-module repo with **three reference patterns** for integrating Databricks (via JDBC) into a Spring Boot app, plus **one library artifact** that packages the minimal-surface-area pattern as a Spring Boot auto-configured starter for embedding into an existing host app.
 
-## The three reference modules
+## Modules
 
-| Module | Pattern | Demo domain | Endpoint | Status |
+| Module | Shape | Pattern | Demo domain | Endpoint |
 |---|---|---|---|---|
-| `databricks-only/` | Single Databricks DataSource | Market indices | `GET /api/indices`, `GET /api/indices/{symbol}` | ✅ merged |
-| `databricks-pg-coexist/` | Two DataSources in one app, **explicit per-dataset routing** via `DataLocationRegistry`, **no fallback** | Portfolio holdings (live=PG, historical=Databricks) | `GET /api/holdings/live`, `GET /api/holdings/historical` | ✅ merged |
-| `databricks-pg-fallback/` | Databricks primary, **implicit PG fallback on failure** via Resilience4j `@CircuitBreaker(fallbackMethod=…)` | Trade history (same rows mirrored in both stores) | `GET /api/trades?account=…` | ✅ merged (PR #9) |
+| `databricks-only/` | runnable app | Single Databricks DataSource | Market indices | `GET /api/indices`, `GET /api/indices/{symbol}` |
+| `databricks-pg-coexist/` | runnable app | Two DataSources in one app, **explicit per-dataset routing** via `DataLocationRegistry`, **no fallback** | Portfolio holdings (live=PG, historical=Databricks) | `GET /api/holdings/live`, `GET /api/holdings/historical` |
+| `databricks-pg-fallback/` | runnable app | Databricks primary, **implicit PG fallback on failure** via Resilience4j `@CircuitBreaker(fallbackMethod=…)` | Trade history (same rows mirrored in both stores) | `GET /api/trades?account=…` |
+| `databricks-access-starter/` | **library JAR** | Spring Boot 3 auto-configured starter — host adds dep + sets `app.databricks.*`, gets qualified `databricksDataSource` + `databricksJdbcTemplate` without touching its existing primary DataSource | — | — (host provides REST/repos) |
 
-Each module has its own README with full setup, env vars, Docker compose (where applicable), Databricks DDL/seed, and curl-based test scenarios. **Always read the target module's README before making changes there** — module-specific details (port numbers, container names, table names) live in the README, not here.
+Each module has its own README with full setup, env vars, Docker compose (where applicable), Databricks DDL/seed, and curl-based test scenarios (or host integration steps for the starter). **Always read the target module's README before making changes there** — module-specific details (port numbers, container names, table names, bean qualifiers) live in the README, not here.
 
 ### When to pick which
 
-- **`databricks-only`** — host has nothing else; you're fully on Databricks. Simplest.
+- **`databricks-only`** — host has nothing else; you're fully on Databricks. Simplest reference.
 - **`databricks-pg-coexist`** — each dataset has a natural home (OLTP rows in PG, analytical scans in Databricks). Routing is explicit and known at config time. No automatic failover.
 - **`databricks-pg-fallback`** — Strangler Fig migration cutover *or* Databricks is your primary but PG is your reliable backup with the same data. Failure is invisible to the caller.
+- **`databricks-access-starter`** — you have an *existing* PG-backed Spring Boot host app at work and want to add Databricks as a second qualified DataSource without disturbing the host's primary PG path. This is the "embed Databricks into a real app" answer — the three reference modules are the "build a new app from scratch" answers.
 
 ## Common tech stack (all modules)
 
@@ -34,12 +36,14 @@ Each module has its own README with full setup, env vars, Docker compose (where 
 
 ```
 databricks-access-service/
-├── pom.xml                       ← aggregator (parent)
-├── CLAUDE.md                     ← this file
+├── pom.xml                          ← aggregator (parent)
+├── CLAUDE.md                        ← this file
+├── README.md                        ← landing page (links to module READMEs)
 ├── springboot-databricks-base-readme.md
-├── databricks-only/              ← variant 1
-├── databricks-pg-coexist/        ← variant 2
-└── databricks-pg-fallback/       ← variant 3
+├── databricks-only/                 ← reference variant 1
+├── databricks-pg-coexist/           ← reference variant 2
+├── databricks-pg-fallback/          ← reference variant 3
+└── databricks-access-starter/       ← library JAR (auto-configured starter)
 ```
 
 ## Build & run
@@ -89,6 +93,18 @@ These hold across all three modules. Module-specific details (table names, env v
 - JDBC URL is constructed in `DatabricksProperties.getJdbcUrl()`. Catalog and schema are passed as `ConnCatalog=…;ConnSchema=…` URL params; SQL in repositories is **unqualified** (just `FROM trades`, not `FROM workspace.demo.trades`).
 - Per-query timeout via `app.databricks.query-timeout-seconds` (where present), applied to `JdbcTemplate`.
 - `RowMapper`s use `rs.getObject(col, Type.class)` for null-safe reads (JDBC 4.2+).
+
+### Library code (`databricks-access-starter/`) extra rules
+
+The starter is **library code**, not app code. The conventions above apply *and* the following are absolute:
+
+- **No `@SpringBootApplication`**, **no `application.yml`**, **no `@RestController`** — the host owns its bootstrap, config, and REST namespace.
+- **No `@Primary` annotations** — the host's existing DataSource is `@Primary` (set by Spring Boot's `DataSourceAutoConfiguration`); declaring a competing `@Primary` would silently steal the host's `@Autowired DataSource`. Bean names (`databricksDataSource`, `databricksJdbcTemplate`, `databricks`) are the library's public API; the host injects via `@Qualifier`.
+- **Every bean is `@ConditionalOnMissingBean(name = "<name>")`** — lets the host override any bean by name. Standard starter hygiene.
+- **The whole config class is opt-in via `@ConditionalOnProperty(prefix = "app.databricks", name = "enabled", havingValue = "true")`** — adding the dep without setting `enabled=true` leaves the starter completely dormant. This decouples dependency adoption from feature activation.
+- **Actuator dependency is `<optional>true</optional>`** in the pom; the health indicator is wrapped in `@ConditionalOnClass(HealthIndicator.class)` so the starter works in hosts without Actuator.
+- **No `spring-boot-maven-plugin`** in the starter's pom — `packaging=jar`, plain library JAR. Adding the plugin would create an executable fat-jar and break library consumption.
+- Bean registration uses Spring Boot 3's `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` mechanism, **not** the legacy `META-INF/spring.factories`.
 
 ### PR workflow (mandatory)
 Every change: plan mode → branch off `main` → commit with Co-Authored-By → push → provide PR URL → wait for the user to merge from GitHub UI. `gh` CLI is not installed locally, so the PR is opened by the user via the URL link. Never commit to `main` directly. Don't bundle unrelated concerns in one PR.
